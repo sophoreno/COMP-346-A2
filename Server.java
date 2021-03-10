@@ -18,20 +18,21 @@ import java.util.InputMismatchException;
 public class Server extends Thread {
 	
 	/* NEW : Shared member variables are now static for the 2 receiving threads */
-	private static int numberOfTransactions;         	/* Number of transactions handled by the server */
-	private static int numberOfAccounts;             	/* Number of accounts stored in the server */
-	private static int maxNbAccounts;                		/* maximum number of transactions */
-	private static Accounts [] account;              		/* Accounts to be accessed or updated */
-	/* NEW : member variabes to be used in PA2 with appropriate accessor and mutator methods */
-	private String serverThreadId;				 /* Identification of the two server threads - Thread1, Thread2 */
-	private static String serverThreadRunningStatus1;	 /* Running status of thread 1 - idle, running, terminated */
-	private static String serverThreadRunningStatus2;	 /* Running status of thread 2 - idle, running, terminated */
+	private static int numberOfTransactions;         /* Number of transactions handled by the server */
+	private static int numberOfAccounts;             /* Number of accounts stored in the server */
+	private static int maxNbAccounts;                /* maximum number of transactions */
+	private static Accounts [] account;              /* Accounts to be accessed or updated */
+	/* NEW : member variables to be used in PA2 with appropriate accessor and mutator methods */
+	private String serverThreadId;				     /* Identification of the two server threads - Thread1, Thread2 */
+	private static String serverThreadRunningStatus1;	/* Running status of thread 1 - idle, running, terminated */
+	private static String serverThreadRunningStatus2;	/* Running status of thread 2 - idle, running, terminated */
   
     /** 
      * Constructor method of Client class
      * 
      * @return 
      * @param stid
+     *
      */
     Server(String stid)
     {
@@ -41,7 +42,7 @@ public class Server extends Thread {
     		numberOfTransactions = 0;
     		numberOfAccounts = 0;
     		maxNbAccounts = 100;
-    		serverThreadId = stid;							/* unshared variable so each thread has its own copy */
+    		serverThreadId = stid;	/* unshared variable so each thread has its own copy */
     		serverThreadRunningStatus1 = "idle";				
     		account = new Accounts[maxNbAccounts];
     		System.out.println("\n Initializing the Accounts database ...");
@@ -55,23 +56,23 @@ public class Server extends Thread {
     	}
     	else
     	{
-    		serverThreadId = stid;							/* unshared variable so each thread has its own copy */
+    		serverThreadId = stid;	/* unshared variable so each thread has its own copy */
     		serverThreadRunningStatus2 = "idle";				
     	}
     }
   
-    /** 
+    /**
      * Accessor method of Server class
      * 
      * @return numberOfTransactions
      * @param
      */
-     public int getNumberOfTransactions()
+    public int getNumberOfTransactions()
      {
          return numberOfTransactions;
      }
-         
-    /** 
+
+     /**
      * Mutator method of Server class
      * 
      * @return 
@@ -82,7 +83,7 @@ public class Server extends Thread {
          numberOfTransactions = nbOfTrans;
      }
 
-    /** 
+     /**
      * Accessor method of Server class
      * 
      * @return numberOfAccounts
@@ -93,7 +94,7 @@ public class Server extends Thread {
          return numberOfAccounts;
      }
          
-    /** 
+     /**
      * Mutator method of Server class
      * 
      * @return 
@@ -103,8 +104,8 @@ public class Server extends Thread {
      { 
          numberOfAccounts = nbOfAcc;
      }
-         
-     /** 
+
+     /**
       * Accessor method of Server class
       * 
       * @return maxNbAccounts
@@ -125,8 +126,8 @@ public class Server extends Thread {
       { 
     	  maxNbAccounts = nbOfAcc;
       }
-           
-      /** 
+
+      /**
        * Accessor method of Server class
        * 
        * @return serverThreadId
@@ -282,27 +283,35 @@ public class Server extends Thread {
         		 /* Process deposit operation */
         		 if (trans.getOperationType().equals("DEPOSIT"))
         		 {
-        			 newBalance = deposit(accIndex, trans.getTransactionAmount()); 
-        			 trans.setTransactionBalance(newBalance);
-        			 trans.setTransactionStatus("done");
+        		     synchronized(this) {
+                         newBalance = deposit(accIndex, trans.getTransactionAmount());
+                         trans.setTransactionBalance(newBalance);
+                         trans.setTransactionStatus("done");
+                     }
+
         			 /* System.out.println("\n DEBUG : Server.processTransactions() - Deposit of " + trans.getTransactionAmount() + " in account " + trans.getAccountNumber()); */
         		 }
         		 else
         			 /* Process withdraw operation */
         			 if (trans.getOperationType().equals("WITHDRAW"))
         			 {
-        				 newBalance = withdraw(accIndex, trans.getTransactionAmount());
-        				 trans.setTransactionBalance(newBalance);
-        				 trans.setTransactionStatus("done");
+        			     synchronized(this) {
+                             newBalance = withdraw(accIndex, trans.getTransactionAmount());
+                             trans.setTransactionBalance(newBalance);
+                             trans.setTransactionStatus("done");
+                         }
+
         				 /* System.out.println("\n DEBUG : Server.processTransactions() - Withdrawal of " + trans.getTransactionAmount() + " from account " + trans.getAccountNumber()); */
         			 }
         			 else
         				 /* Process query operation */
         				 if (trans.getOperationType().equals("QUERY"))
         				 {
-                            newBalance = query(accIndex);
-                            trans.setTransactionBalance(newBalance);
-                            trans.setTransactionStatus("done");
+        				     synchronized(this) {
+                                 newBalance = query(accIndex);
+                                 trans.setTransactionBalance(newBalance);
+                                 trans.setTransactionStatus("done");
+                             }
                             /* System.out.println("\n DEBUG : Server.processTransactions() - Obtaining balance from account" + trans.getAccountNumber()); */
         				 }
         		 while (Network.getOutBufferStatus().equals("full"))
@@ -324,7 +333,7 @@ public class Server extends Thread {
      * @param i, amount
      */
    
-     public double deposit(int i, double amount)
+     public synchronized double deposit(int i, double amount)
      {
          double curBalance;      /* Current account balance */
          curBalance = account[i].getBalance( );          /* Get current account balance */
@@ -354,7 +363,7 @@ public class Server extends Thread {
      * @param i, amount
      */
  
-     public double withdraw(int i, double amount)
+     public synchronized double withdraw(int i, double amount)
      {
          double curBalance; /* Current account balance */
          curBalance = account[i].getBalance( ); /* Get current account balance */
@@ -373,12 +382,12 @@ public class Server extends Thread {
      * @param i
      */
  
-     public double query(int i)
+     public synchronized double query(int i)
      {
          double curBalance; /* Current account balance */
          curBalance = account[i].getBalance( ); /* Get current account balance */
 
-//         System.out.println("\n DEBUG : Server.query - " + "i " + i + " Current balance " + curBalance + " " + getServerThreadId());
+         System.out.println("\n DEBUG : Server.query - " + "i " + i + " Current balance " + curBalance + " " + getServerThreadId());
 
          return curBalance;  /* Return current account balance */
      }
@@ -401,7 +410,6 @@ public class Server extends Thread {
      * @return 
      * @param
      */
-      
     public void run()
     {
         Transactions trans = new Transactions();
@@ -411,21 +419,22 @@ public class Server extends Thread {
 
         if (serverThreadId.equals("Thread1")) {
              processTransactions(trans);
+            serverEndTime = System.currentTimeMillis();
              setServerThreadRunningStatus1("terminated");
+             System.out.println("\n Terminating server thread1 - " + " Running time " + (serverEndTime - serverStartTime) + " milliseconds");
 
         } else if (serverThreadId.equals("Thread2")) {
              processTransactions(trans);
+             serverEndTime = System.currentTimeMillis();
              setServerThreadRunningStatus2("terminated");
+             System.out.println("\n Terminating server thread2 - " + " Running time " + (serverEndTime - serverStartTime) + " milliseconds");
         }
-        serverEndTime = System.currentTimeMillis();
         /* System.out.println("\n DEBUG : Server.run() - starting server thread " + Network.getServerConnectionStatus()); */
-
         // Disconnect the server only if both threads are terminated.
         if (getServerThreadRunningStatus1().equals("terminated")
-                && getServerThreadRunningStatus2().equals("terminated")) {
+                && getServerThreadRunningStatus2().equals("terminated"))
             Network.disconnect(Network.getServerIP());
-            System.out.println("\n Terminating server thread - " + " Running time " + (serverEndTime - serverStartTime) + " milliseconds");
-        }
     }
 }
+
 
