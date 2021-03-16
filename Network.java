@@ -26,10 +26,10 @@ public class Network extends Thread {
     private static String networkStatus;                        /* Network status - active, inactive */
 
     // We added these semaphores; only 1 thread can access the shared resource.
-    private static Semaphore send_semaphore = new Semaphore(1);
-    private static Semaphore receive_semaphore = new Semaphore(1);
-    private static Semaphore transferIn_semaphore = new Semaphore(1);
-    private static Semaphore transferOut_semaphore = new Semaphore(1);
+    private static Semaphore send_semaphore;
+    private static Semaphore receive_semaphore;
+    private static Semaphore transferIn_semaphore;
+    private static Semaphore transferOut_semaphore;
        
     /** 
      * Constructor of the Network class
@@ -62,6 +62,10 @@ public class Network extends Thread {
          outputIndexClient = 0;
                 
          networkStatus = "active";
+        send_semaphore = new Semaphore(maxNbPackets);
+        receive_semaphore = new Semaphore(0);
+        transferIn_semaphore = new Semaphore(0);
+        transferOut_semaphore = new Semaphore(maxNbPackets);
       }     
         
      /** 
@@ -362,8 +366,7 @@ public class Network extends Thread {
          // acquire() method requires a try/catch block
          try {
              send_semaphore.acquire();
-         } catch (InterruptedException e) { }
-
+         } catch (InterruptedException e) {System.out.println("\nSemaphore failed"); }
         inComingPacket[inputIndexClient].setAccountNumber(inPacket.getAccountNumber());
         inComingPacket[inputIndexClient].setOperationType(inPacket.getOperationType());
         inComingPacket[inputIndexClient].setTransactionAmount(inPacket.getTransactionAmount());
@@ -385,7 +388,7 @@ public class Network extends Thread {
             setInBufferStatus("normal");
         }
         // Releasing the permit
-        send_semaphore.release();
+        transferIn_semaphore.release();
         return true;
      }
          
@@ -398,8 +401,7 @@ public class Network extends Thread {
       {
           try {
               receive_semaphore.acquire();
-          } catch (InterruptedException e) { }
-
+          } catch (InterruptedException e) {System.out.println("\nSemaphore failed"); }
           outPacket.setAccountNumber(outGoingPacket[outputIndexClient].getAccountNumber());
           outPacket.setOperationType(outGoingPacket[outputIndexClient].getOperationType());
           outPacket.setTransactionAmount(outGoingPacket[outputIndexClient].getTransactionAmount());
@@ -420,9 +422,9 @@ public class Network extends Thread {
           else {
               setOutBufferStatus("normal");
           }
-          // Releasing the permit
-          receive_semaphore.release();
-          return true;
+//          // Releasing the permit
+          transferOut_semaphore.release();
+           return true;
       }
          
     
@@ -437,8 +439,7 @@ public class Network extends Thread {
      {
          try {
              transferOut_semaphore.acquire();
-         } catch (InterruptedException e) { }
-
+         } catch (InterruptedException e) {System.out.println("\nSemaphore failed"); }
          outGoingPacket[inputIndexServer].setAccountNumber(outPacket.getAccountNumber());
          outGoingPacket[inputIndexServer].setOperationType(outPacket.getOperationType());
          outGoingPacket[inputIndexServer].setTransactionAmount(outPacket.getTransactionAmount());
@@ -459,9 +460,9 @@ public class Network extends Thread {
          else {
              setOutBufferStatus("normal");
          }
-         // Releasing the permit
-         transferOut_semaphore.release();
-         return true;
+//         // Releasing the permit
+         receive_semaphore.release();
+          return true;
      }
          
     /**
@@ -474,8 +475,7 @@ public class Network extends Thread {
      {
          try {
              transferIn_semaphore.acquire();
-         } catch (InterruptedException e) { }
-
+         } catch (InterruptedException e) {System.out.println("\nSemaphore failed"); }
          inPacket.setAccountNumber(inComingPacket[outputIndexServer].getAccountNumber());
          inPacket.setOperationType(inComingPacket[outputIndexServer].getOperationType());
          inPacket.setTransactionAmount(inComingPacket[outputIndexServer].getTransactionAmount());
@@ -497,7 +497,7 @@ public class Network extends Thread {
              setInBufferStatus("normal");
          }
          // Releasing the permit
-         transferIn_semaphore.release();
+         send_semaphore.release();
          return true;
      }
          
@@ -572,11 +572,18 @@ public class Network extends Thread {
     public void run()
     {	
     	/* System.out.println("\n DEBUG : Network.run() - starting network thread"); */
-    	while (!getClientConnectionStatus().equals("disconnected")
-                && !getServerConnectionStatus().equals("disconnected"))
-            Thread.yield();
 
-        disconnect(getServerIP());
+  	 boolean clientS = !getClientConnectionStatus().equals("disconnected");
+  	 boolean serverS = !getServerConnectionStatus().equals("disconnected");
+    	while (clientS || serverS)
+    	{
+    	 clientS = !getClientConnectionStatus().equals("disconnected");
+    	 serverS = !getServerConnectionStatus().equals("disconnected");
+         Thread.yield();
+    	}
+
+    	//System.out.println(getServerConnectionStatus());
+        //disconnect(getServerIP());
         System.out.println("\n Terminating network thread  -  Client " + getClientConnectionStatus() + " Server "
                 + getServerConnectionStatus());
         setNetworkStatus("inactive");
