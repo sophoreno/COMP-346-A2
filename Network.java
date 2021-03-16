@@ -23,7 +23,13 @@ public class Network extends Thread {
     private static Transactions inComingPacket[];              /* Incoming network buffer */
     private static Transactions outGoingPacket[];              /* Outgoing network buffer */
     private static String inBufferStatus, outBufferStatus;     /* Current status of the network buffers - normal, full, empty */
-    private static String networkStatus;                       /* Network status - active, inactive */
+    private static String networkStatus;                        /* Network status - active, inactive */
+
+    // We added these semaphores; only 1 thread can access the shared resource.
+    private static Semaphore send_semaphore = new Semaphore(1);
+    private static Semaphore receive_semaphore = new Semaphore(1);
+    private static Semaphore transferIn_semaphore = new Semaphore(1);
+    private static Semaphore transferOut_semaphore = new Semaphore(1);
        
     /** 
      * Constructor of the Network class
@@ -353,6 +359,11 @@ public class Network extends Thread {
      */
      public static boolean send(Transactions inPacket)
      {
+         // acquire() method requires a try/catch block
+         try {
+             send_semaphore.acquire();
+         } catch (InterruptedException e) { }
+
         inComingPacket[inputIndexClient].setAccountNumber(inPacket.getAccountNumber());
         inComingPacket[inputIndexClient].setOperationType(inPacket.getOperationType());
         inComingPacket[inputIndexClient].setTransactionAmount(inPacket.getTransactionAmount());
@@ -373,6 +384,8 @@ public class Network extends Thread {
         else {
             setInBufferStatus("normal");
         }
+        // Releasing the permit
+        send_semaphore.release();
         return true;
      }
          
@@ -383,6 +396,10 @@ public class Network extends Thread {
      */
       public static boolean receive(Transactions outPacket)
       {
+          try {
+              receive_semaphore.acquire();
+          } catch (InterruptedException e) { }
+
           outPacket.setAccountNumber(outGoingPacket[outputIndexClient].getAccountNumber());
           outPacket.setOperationType(outGoingPacket[outputIndexClient].getOperationType());
           outPacket.setTransactionAmount(outGoingPacket[outputIndexClient].getTransactionAmount());
@@ -403,6 +420,8 @@ public class Network extends Thread {
           else {
               setOutBufferStatus("normal");
           }
+          // Releasing the permit
+          receive_semaphore.release();
           return true;
       }
          
@@ -416,6 +435,10 @@ public class Network extends Thread {
      */
      public static boolean transferOut(Transactions outPacket)
      {
+         try {
+             transferOut_semaphore.acquire();
+         } catch (InterruptedException e) { }
+
          outGoingPacket[inputIndexServer].setAccountNumber(outPacket.getAccountNumber());
          outGoingPacket[inputIndexServer].setOperationType(outPacket.getOperationType());
          outGoingPacket[inputIndexServer].setTransactionAmount(outPacket.getTransactionAmount());
@@ -436,6 +459,8 @@ public class Network extends Thread {
          else {
              setOutBufferStatus("normal");
          }
+         // Releasing the permit
+         transferOut_semaphore.release();
          return true;
      }
          
@@ -447,6 +472,10 @@ public class Network extends Thread {
      */
      public static boolean transferIn(Transactions inPacket)
      {
+         try {
+             transferIn_semaphore.acquire();
+         } catch (InterruptedException e) { }
+
          inPacket.setAccountNumber(inComingPacket[outputIndexServer].getAccountNumber());
          inPacket.setOperationType(inComingPacket[outputIndexServer].getOperationType());
          inPacket.setTransactionAmount(inComingPacket[outputIndexServer].getTransactionAmount());
@@ -467,6 +496,8 @@ public class Network extends Thread {
          else {
              setInBufferStatus("normal");
          }
+         // Releasing the permit
+         transferIn_semaphore.release();
          return true;
      }
          
