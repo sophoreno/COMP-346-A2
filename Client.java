@@ -157,6 +157,7 @@ public class Client extends Thread {
              /* System.out.println("\n DEBUG : Client.sendTransactions() - sending transaction on account " + transaction[i].getAccountNumber()); */
              Network.send(transaction[i]); /* Transmit current transaction */
              i++;
+
          }
      }
          
@@ -172,7 +173,7 @@ public class Client extends Thread {
          while (i < getNumberOfTransactions())
          {
              while (Network.getOutBufferStatus().equals("empty"))
-                 Thread.yield(); 	/* Yield the cpu if the network output buffer is full */
+                 Thread.yield();    /* Yield the cpu if the network output buffer is full */
 
              Network.receive(transact);  /* Receive updated transaction from the network buffer */
              /* System.out.println("\n DEBUG : Client.receiveTransactions() - receiving updated transaction on account " + transact.getAccountNumber()); */
@@ -207,14 +208,16 @@ public class Client extends Thread {
         receiveClientStartTime = System.currentTimeMillis();
 
         if (clientOperation.equals("sending")) {
-            /* System.out.println("\n DEBUG : Client.run() - starting client sending thread connected"); */
+            System.out.println("\n DEBUG : Client.run() - starting client sending thread connected");
+
             this.sendTransactions();
             sendClientEndTime = System.currentTimeMillis();
             System.out.println("\n Terminating client sending thread  -  Running time "
                     + (sendClientEndTime - sendClientStartTime) + " milliseconds");
 
         } else if (clientOperation.equals("receiving")) {
-            /* System.out.println("\n DEBUG : Client.run() - starting client receiving thread connected"); */
+            System.out.println("\n DEBUG : Client.run() - starting client receiving thread connected");
+
             this.receiveTransactions(transact);
             receiveClientEndTime = System.currentTimeMillis();
             System.out.println("\n Terminating client receiving thread  -  Running time "
